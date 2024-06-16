@@ -3,7 +3,7 @@
 from amaranth import *
 from amaranth.lib.wiring import Component, In, Out
 
-width = 1024
+width = 24
 
 class Sieve(Component):
     #1. Create a list of consecutive integers from 2 through n: (2, 3, 4, ..., n).
@@ -65,6 +65,7 @@ class FlipMultiplesofP(Component):
 
     def elaborate(self,platform):
         m = Module()
+
         i=Signal(20)
 
         accum = Signal.like(self.bits_in)
