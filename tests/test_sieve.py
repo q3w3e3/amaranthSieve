@@ -1,17 +1,6 @@
 from amaranth.sim import Simulator
 
 from amaranth_sieve.sieve2 import Sieve as Sieve2
-from amaranth_sieve.sieve import Sieve
-
-# def test_sieve():
-#     length = 100
-
-#     sieve = Sieve()
-
-#     sim = Simulator(sieve)
-#     sim.add_clock(period=1)
-#     with sim.write_vcd("sieve.vcd"):
-#         sim.run_until(length)
 
 def test_sieve2():
     sieve2 = Sieve2()

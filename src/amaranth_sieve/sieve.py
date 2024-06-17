@@ -1,15 +1,16 @@
-# this is bad, this doesnt compile, do not do this, 
+# this is bad, this doesnt compile, do not do this,
 
 from amaranth import *
 from amaranth.lib.wiring import Component, In, Out
 
 width = 24
 
+
 class Sieve(Component):
-    #1. Create a list of consecutive integers from 2 through n: (2, 3, 4, ..., n).
+    # 1. Create a list of consecutive integers from 2 through n: (2, 3, 4, ..., n).
     isPrimeArray: Out(width, init=~0)
 
-    def elaborate(self,platform):
+    def elaborate(self, platform):
 
         flipMultiplesofP = FlipMultiplesofP()
         findFirstSetBit = FindFirstSetBit()
@@ -17,21 +18,21 @@ class Sieve(Component):
         m = Module()
         m.submodules += flipMultiplesofP, findFirstSetBit
 
-        #2. Initially, let p equal 2, the smallest prime number.
-        prime = Signal(20, init=2) 
+        # 2. Initially, let p equal 2, the smallest prime number.
+        prime = Signal(20, init=2)
         prime_initial = Signal.like(prime)
 
         with m.FSM():
             with m.State("Initializing"):
-                #Mark 1 as not prime
+                # Mark 1 as not prime
                 m.d.sync += self.isPrimeArray.eq(~1)
                 m.next = "starting"
             with m.State("starting"):
                 # handle shit for flipMultiplesofP
                 m.d.sync += [
-                    flipMultiplesofP.p.eq(prime), 
+                    flipMultiplesofP.p.eq(prime),
                     flipMultiplesofP.bits_in.eq(self.isPrimeArray),
-                    flipMultiplesofP.run.eq(1)
+                    flipMultiplesofP.run.eq(1),
                 ]
                 m.next = "waiting"
             with m.State("waiting"):
@@ -44,7 +45,7 @@ class Sieve(Component):
             with m.State("searching"):
                 m.d.comb += [
                     findFirstSetBit.bits_in.eq(self.isPrimeArray),
-                    findFirstSetBit.start.eq(prime+1)
+                    findFirstSetBit.start.eq(prime + 1),
                 ]
                 m.d.sync += prime_initial.eq(prime)
                 m.d.sync += prime.eq(findFirstSetBit.n)
@@ -55,7 +56,6 @@ class Sieve(Component):
         return m
 
 
-
 class FlipMultiplesofP(Component):
     p: In(20)
     bits_in: In(width)
@@ -63,10 +63,10 @@ class FlipMultiplesofP(Component):
     run: In(1)
     done: Out(1)
 
-    def elaborate(self,platform):
+    def elaborate(self, platform):
         m = Module()
 
-        i=Signal(20)
+        i = Signal(20)
 
         accum = Signal.like(self.bits_in)
         m.d.comb += self.bits_out.eq(accum)
@@ -79,7 +79,7 @@ class FlipMultiplesofP(Component):
                     m.next = "Flip"
             with m.State("Flip"):
                 with m.If(i <= len(accum)):
-                    m.d.sync += accum.bit_select(abs(i-1),1).eq(0)
+                    m.d.sync += accum.bit_select(abs(i - 1), 1).eq(0)
                     m.d.sync += i.eq(i + self.p)
                 with m.Else():
                     m.next = "Done"
@@ -89,12 +89,13 @@ class FlipMultiplesofP(Component):
                     m.next = "Idle"
         return m
 
+
 class FindFirstSetBit(Component):
     n: Out(20, init=1)
     start: In(20)
     bits_in: In(width)
 
-    def elaborate(self,platform):
+    def elaborate(self, platform):
 
         m = Module()
 
