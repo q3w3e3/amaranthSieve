@@ -1,90 +1,46 @@
-# chain of 1000000 1 bit registers
-# start at second position (flip first as 1 is not prime)
-# store this pisiton to a 20 bit register (n)
-# flip that bit
-# move n positions along the chain
-# flip this bit
-# move again
-# flip
-# until at end of chain
-# move to start of chain
-# look for first set bit
-# goto: store this pisiton to a 20 bit register (n)
-
-
-"""
-1. INIT
-pos = 1
-prime = 0
-array = 
-1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
-^
-flip first bit
-
-2. STEPPING
-pos = 2
-prime = 0
-array = 
-0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
-  ^
-  step right 
-  if {pos} < len(array) GOTO 3
-  else GOTO 6
-
-3. CHECKING
-pos = 2
-prime = 2
-array = 
-0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
-  ^
-  if bit is set store {pos} to {prime}
-  else GOTO 2
-
-
-4. STEPBYP
-pos = 4
-prime = 2
-array = 
-0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
-      ^
-      if {pos}+{prime} < len(array) 
-        step right by {prime} 
-      else
-        else set {pos} to {prime} and GOTO 2
-5. FLIPPING
-pos = 4
-prime = 2
-array = 
-0 1 1 0 1 1 1 1 1 1 1 1 1 1 1 1
-      ^
-      flip bit at {pos}
-      GOTO 4
-
-6.
-
-DONE
-
-"""
-
 from amaranth import *
 from amaranth.lib.wiring import Component, In, Out
 
-nPrimes=10000
-bits_to_store=20
+bits_to_store=16
+maxN=min(1000000,(2**bits_to_store)-1)
+
+class TopLevel(Elaboratable):
+    def elaborate(self,platform):
+        m = Module()
+        m.submodules.sieve = sieve = Sieve()
+
+        button = platform.request("button").i
+
+        platform.add_resources(platform.break_off_pmod)
+
+        m.d.comb += sieve.reset.eq(button)
+        
+        m.d.comb += platform.request("led_r",1).o.eq(sieve.done)
+        m.d.comb += platform.request("led_g",0).o.eq(button)
+
+        return m
 
 class Sieve(Component):
-    isPrimeArray: Out(nPrimes,init=~0)
+    isPrimeArray: Out(maxN,init=~0)
     done: Out(1)
+    reset: In(1)
 
     def elaborate(self,platform):
         m = Module()
         pos = Signal(bits_to_store)
         prime = Signal.like(pos)
 
+
         with m.FSM():
             with m.State("INIT"):
-                m.d.sync += self.isPrimeArray.eq(~1)
-                m.next = "STEPPING"
+                m.d.comb += self.isPrimeArray.eq(~1)
+                m.d.comb += self.done.eq(0)
+                m.d.sync += [
+                    pos.eq(0),
+                    prime.eq(0)
+                ]
+                with m.If(~self.reset):
+                    m.next = "STEPPING"
             with m.State("STEPPING"):
                 m.d.sync += pos.eq(pos+1)
                 with m.If(pos<=len(self.isPrimeArray)):
@@ -98,15 +54,19 @@ class Sieve(Component):
                 with m.Else():
                     m.next = "STEPPING"
             with m.State("STEPBYP"):
-                with m.If((pos+prime)<=len(self.isPrimeArray)):
+                with m.If(prime > int(len(self.isPrimeArray)/2)):
+                    m.next = "DONE"
+                with m.Elif((pos+prime)<=len(self.isPrimeArray)):
                     m.d.sync += pos.eq(pos+prime)
                     m.next = "FLIPPING"
                 with m.Else():
                     m.d.sync += pos.eq(prime)
                     m.next = "STEPPING"
             with m.State("FLIPPING"):
-                m.d.sync += self.isPrimeArray.bit_select(abs(pos-1),1).eq(0)
+                m.d.comb += self.isPrimeArray.bit_select(abs(pos-1),1).eq(0)
                 m.next = "STEPBYP"
             with m.State("DONE"):
                 m.d.comb += self.done.eq(1)
+                with m.If(self.reset):
+                    m.next = "INIT"
         return m

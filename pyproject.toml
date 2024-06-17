@@ -1,17 +1,15 @@
 [project]
-name = "amaranth_sieve"
+name = "amaranth-sieve"
 version = "0.0.0"
 description = "test"
 
-requires-python = "==3.12.*"
+requires-python = "~=3.8"
 dependencies = [
     "amaranth[builtin-yosys]~=0.5",
     "amaranth-boards @ git+https://github.com/amaranth-lang/amaranth-boards",
     "yowasp-yosys",
     "yowasp-nextpnr-ice40",
 ]
-
-
 
 [tool.pdm.dev-dependencies]
 test = [
@@ -21,4 +19,4 @@ test = [
 [tool.pdm.scripts]
 _.env_file = ".env.toolchain"
 test = { cmd = "pytest" }
-
+build_sieve = { call = "amaranth_sieve:build_icebreaker()" }
