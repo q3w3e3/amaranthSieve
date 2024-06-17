@@ -22,7 +22,7 @@ def test_sieve2():
 
 
     sim2 = Simulator(sieve2)
-    sim2.add_clock(period=1e-6)
+    sim2.add_clock(period=1.667e-7)
     sim2.add_testbench(testbench)
     with sim2.write_vcd("sieve2.vcd"):
         sim2.run()

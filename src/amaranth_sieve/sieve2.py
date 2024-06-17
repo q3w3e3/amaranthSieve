@@ -9,9 +9,9 @@ class TopLevel(Elaboratable):
         m = Module()
         m.submodules.sieve = sieve = Sieve()
 
-        button = platform.request("button").i
-
         platform.add_resources(platform.break_off_pmod)
+
+        button = platform.request("button",1).i
 
         m.d.comb += sieve.reset.eq(button)
         
@@ -33,7 +33,7 @@ class Sieve(Component):
 
         with m.FSM():
             with m.State("INIT"):
-                m.d.comb += self.isPrimeArray.eq(~1)
+                m.d.sync += self.isPrimeArray.eq(~1)
                 m.d.comb += self.done.eq(0)
                 m.d.sync += [
                     pos.eq(0),
@@ -63,7 +63,7 @@ class Sieve(Component):
                     m.d.sync += pos.eq(prime)
                     m.next = "STEPPING"
             with m.State("FLIPPING"):
-                m.d.comb += self.isPrimeArray.bit_select(abs(pos-1),1).eq(0)
+                m.d.sync += self.isPrimeArray.bit_select(abs(pos-1),1).eq(0)
                 m.next = "STEPBYP"
             with m.State("DONE"):
                 m.d.comb += self.done.eq(1)
