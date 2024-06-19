@@ -1,7 +1,8 @@
 from amaranth import *
 from amaranth.lib.wiring import Component, In, Out
+from amaranth.lib.memory import Memory
 
-bits_to_store = 16
+bits_to_store = 12
 maxN = min(1000000, (2**bits_to_store) - 1)
 
 
@@ -34,8 +35,6 @@ class Sieve(Component):
 
     def elaborate(self, platform):
         m = Module()
-
-        m.submodules.memory = self.memory
 
         with m.FSM():
             with m.State("INIT"):
@@ -75,30 +74,37 @@ class Sieve(Component):
         return m
 
 
-class PrimeMemory(Component):
-    n: In(1)
+class PrimeMemory(Component): ## THIS DOESNT QUITE WORK AS IS, READS LAG BEHIND ADDR BY ONE CYCLE 
+    n: In(bits_to_store)
     wr_enable: In(1)
-    read: Out(1)
     write: In(1)
+    read: Out(1)
 
     def __init__(self, bits):
         super().__init__()
-        self.memory = Memory(width=128,depth=-(-bits//128))
-        self.wr_port = self.memory.write_port(granularity=1) # is this worth doing? 
-        self.r_port = self.memory.read_port(transparent_for=(self.wr_port,)) #does the read need to be transparent for the writes? does this matter? maybe comb domain?
+        self.memory = Memory(shape=8,depth=3,init=b"\xff\x00\x77")
+        self.wr_port = self.memory.write_port()
+        self.r_port = self.memory.read_port(domain="comb") #does the read need to be transparent for the writes? does this matter? maybe comb domain?
 
-    def elaborate(self, platform):
-        """
-            if wr_enable: 
-                comb: self.wr_port.en.eq( 1<< n%width ) #off by 1? # am i understanding the use of the Wider Enable correctly?
-                sync:
-                      self.wr_port.addr.eq( (ceiling n/width) ) #off by 1?
-                      self.wr_port.data.eq(self.write)
-            else:
-                comb:
-                      self.read.eq( self.r_port.addr.eq( ceiling n/width )[ 1<< n%width ] )
+    def elaborate(self, platform): 
+        m = Module()
 
-            this feels inefficient because if im reading/writing successive bits im waiting for the entire row each time? does this matter?
-        """
+        m.submodules += self.memory
 
+        row = self.n//self.memory.shape
+        offset = self.n % self.memory.shape
+
+        m.d.comb += self.r_port.addr.eq(row)
+
+        m.d.comb += self.wr_port.en.eq(self.wr_enable)
+        m.d.comb += self.read.eq(self.r_port.data.bit_select(offset,1))
+
+
+        m.d.comb += [
+            self.wr_port.addr.eq( row ),
+            self.wr_port.data.eq(self.r_port.data | (1 << offset))
+        ]
+
+        
+        return m 
 
