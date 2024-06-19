@@ -89,7 +89,6 @@ class PrimeMemory(Component):
 
     def elaborate(self, platform):
         """
-            each clock cycle
             if wr_enable: 
                 comb: self.wr_port.en.eq( 1<< n%width ) #off by 1? # am i understanding the use of the Wider Enable correctly?
                 sync:
