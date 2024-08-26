@@ -2,8 +2,8 @@ from amaranth import *
 from amaranth.lib.wiring import Component, In, Out
 from amaranth.lib.memory import Memory
 
-bits_to_store = 8
-maxN = min(1000000, (2**bits_to_store) - 1)
+bits_to_store = 136
+#maxN = min(1000000, (2**bits_to_store) - 1)
 
 class TopLevel(Elaboratable):
     def elaborate(self, platform):
@@ -59,7 +59,7 @@ class Sieve(Component):
 
             with m.State("STEPPING"):
                 m.d.sync += self.pos.eq(self.pos + 1)
-                with m.If(self.pos <= maxN):
+                with m.If(self.pos <= bits_to_store):
                     m.next = "CHECKING"
                 with m.Else():
                     m.next = "DONE"
@@ -73,9 +73,9 @@ class Sieve(Component):
                     m.next = "STEPPING"
 
             with m.State("STEPBYP"):
-                with m.If(self.prime > int(len(self.PrimeArray) / 2)):
-                    m.next = "DONE"
-                with m.Elif((self.pos + self.prime) <= len(self.PrimeArray)):
+                # with m.If(self.prime > int(len(self.PrimeArray) / 2)):
+                #     m.next = "DONE"
+                with m.If((self.pos + self.prime) <= len(self.PrimeArray)):
                     m.d.sync += self.pos.eq(self.pos + self.prime)
                     m.next = "FLIPPING"
                 with m.Else():
@@ -84,6 +84,8 @@ class Sieve(Component):
 
             with m.State("FLIPPING"):
                 ## this is the fun bit 
+
+                ## TODO: check if the memory is actually ready so that things like 25 (8*3+1) actually get marked off........
                 m.d.comb += [ 
                     self.PrimeArray.write.eq(0),
                     self.PrimeArray.wr_enable.eq(1)
@@ -110,6 +112,7 @@ class PrimeMemory(Component): ## TODO: add a way to re-init this ?
         depth = -(-bits//width)
 
         self.memory = Memory(shape=width,depth=depth,init=[~1]+([~0]*(depth-1)))
+        print(self.memory.init)
         self.wr_port = self.memory.write_port(granularity=1) # I get choice of either 1 granularity here, or transparency below
         self.rd_port = self.memory.read_port() #does the read need to be transparent for the writes? does this matter?
 
